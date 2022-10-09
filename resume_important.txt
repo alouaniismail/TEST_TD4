@@ -1,0 +1,146 @@
+__internes.c cache des infos au client , on aimerait faire pareil pour changer la réalisation sans changer les tests car la réalisation est transparente par rapport aux tests.
+
+Les fonctions accessibles par le client sont: monterDans et allerArretSuivant.
+LA 1ERE dans l'interface Vehicule qui implémente la classe Autobus et qui fait:
+numeroArret++;
+for (Passager p: passagers)
+	if(p!=null)
+		p.nouvelArret(this,numeroArret);
+//Notification suivant la documentation dans Passager qui implémente PassagerStandard.
+nouvelArret fait quoi ?
+elle est dans PassagerSTandard.java et fait d'après la documentation le changement du caractère du passager ou le faire sortir (si destination(attribut dans PassagerStandard's class)). Ici, le caractère on peut pas le deviner donc on fait tout simple:(il y a un lien et-un entre ces deux classes autobus et passager_standard)
+if(numeroArret==destination)//documentation doxygen:
+//a chaque arret(methode precedente) la methode nouvelArret est appele par un vehicule
+//Le passager peut .. sortir du bus. l'autre deja non.
+//Le véhicule accepte la demande et modifie ..
+//appel a une méthode véhicule.
+		v.arretDemanderSortie(this);//refere au passager en cours .
+Voila.
+Et rebeulotte, arretDemanderSortie est une méthode de Véhicule (v. --vérification) qui fait:
+pulic void arretDemanderSortie(Passager p)
+{//dans autobus implementation de vehicule.
+//il veut sortir, c'est une méthode dans autobus qui a comme attribut des jauge
+//jaugeAssis et jaugeDebout
+if(p.estAssis())
+	jaugeAssis.decrementer();
+else 
+	jaugeDebout.decrementer();
+//on doit faire sortir le passager apres avoir s'occuper des jauges de vehicule.
+p.changerEnDehors();
+//on doit l'enlever pas le mettre dehors et c'est tout suivant les méthodes d'instances de
+//Autobus.
+this.enleverPassager(p);
+}
+Les jauges n'interviennent pas, enleverPassager fait:
+public void enleverPassager(Passager p)
+{
+int i=0;
+//tant que soit on trouve un null(pas de compacite) soit on trouve pas le p on continue...
+while(passagers[i]==null || !passagers.equals(p))
+	i++;
+passagers[i]=null;
+}
+Et reste changerEnDehors méthode de PassagerStandard qui fait:
+maPosition=Position.dehors();
+il affecte son attribut maPosition a une des 3 variables d'instances en retournant un new (getters) Position.Dehors; //qui est un attribut static dont la méthode qui le GET est declaree en static(public void static).
+Et pour POSITION, R.A.S pour notre contexte.
+COMME on pourrait le voir, tout simplement dans la 1ere methode utilisee par le client dans Simple.java (qui va exploiter le code), seuls allerArretSuivant est utile dont l'ppel fait un saut entre ces deux implementations: autobus et passager standard.
+Notre but dans ce td est de rendre ces méthodes non accessibles au client (qui ne sont pas utilisees par le client)
+=>Dans l'interface Passager.
+=>Dans l'interface Vehicule.
+
+Idée:
+Construire (comme dans C) 2 headers soit 2 interfaces:
+Usager et Passager avec Usager contenant les méthodes accessibles au client specifiques a Passager.
+Et de meme pour Transport et Vehicule.
+CONSTRUCTION:
+>
+
+ce qui est interne au paquetage et ce qui est pas interne..
+Premierement: dans Simple.java on fait un import de tec.Vehicule on doit le supprimer car c'est transparent par rapport au client et faire seulement import tec.Transport.
+Deuxiement: d'après ce qu'on a dit avant, le Transport devrait etre interne au paquetage pour pouvoir l'importer car il contient les methodes accessibles au client. De même, l'interface Vehicule est interne au paquetage car elle utilise et contient des methodes internes au paquetage.
+->question rapide: les fichiers tests peuvent utiliser allerArretSuivant ?  
+OUI, ligne 343 de TestAutobus.java ! (faussaire et tests jauge/position non aucun rapport)
+là, on fait des tests unitaires au sein d'une classe TestPosition donc c'est normal de tester toutes les fonctions. Et c'est ici le point principal, c'est qu'on a changé brièvement la réalisation(allerArretSuivant dans Transport et Vehicule v=(Vehicule)t dans monterDans(interface Usager)) sans changer l'implémentation des tests.
+<=>Changer la réalisation sans changer 'bcp' le code client.
+C'était le 3ieme point.
+=>Les deux tests d'autobus et passsager standard ont un lien est-un avec les deux interfaces.
+RESUME:
+on a modifie les fichiers necessaires, faire les liens et-un, importer dans le package reste le test global Simple.
+En cas d'échec du type casting, c'est à l'execution ici ; c'est parfaitement logique.
+Elle peut échouer dans d'autres circonstances.
+===============================
+Le mécanisme de Java offre deux manière de rendre ces méthodes internes inaccessibles en dehors du paquetage. Elle dépendent de la visibilité publique/non publique des classes concrètes autobus et passager standard. 
+CONSEILS:
+limiter les portées
+la portée du paquetage est forte que la portée des méthodes à l'intèrieur car l'accès à une classe publique avec une compilation comme dans le Makefile offre un certain degrès d'accessiblitées via les .    .
+RESUME:
+la classe PRINCIPALE<><> instancie mais !!ne doit pas avoir acces aux methodes declarees dans les interfaces internes au paquetage!!. 
+Avec les import et les public interface, le client peut avoir acces aux méthodes de Passager apres instanciation, on veut pas ca, on veut compléter le but.
+=>On remplace par des abstract class pas des abstract public class et par exemple pour autobus: public class Autobus extends Vehicule implements Transport.
+<=>Les interfaces publiques par des classes abstraites dont la portée est celle du paquet (interne au paquet) ; donc: le client peut instancier car c'est public mais ne peut pas accéder aux fonctions internes au paquetage soit les fonctions autres que allerArretSuivant et monterDans. Pour cela au lieu de rendre les interfaces publiques par leurs utilisation dans laquelle un code client peut tout à fait implémenter cette classe et avoir accès aux méthodes après via un autre fichier main compilation en ligne wc -l horizental 2 ; on va les rendre abstraites ces classes par abstract class pas abstract public class => portée du package (pas d'accessibilité au niveau du client car ce n'est pas un interface publique mais une classe abstraite interne au paquetage et les tests faussaires ont acces a cela car on a bien modifier 'un peu' les trucs+interne au paquetage. ) ; contrairement a SimpleAbstract.
+
+=>Onfera la deuxième méthode pour résumer TOUT ceci. 
+1.Séparer les méthodes avec des acces differents.
+>Interfaces internes au paquetage(non appelé depuis l'extèrieur)
+>Remaniement(multi-heritage/division d'interfaces/classes concretes lien est - un avec ces deux interfaces)
+ ; de meme pour la partie de passager_standard.
+>Un probleme de portee et de type cast:
+il est tjrs possible au client d'utiliser les methodes internes.
+=>PROBLEME A PREMOUVOIR:
+**2 solution; la premiere deja faite dans ./abstract/ ; elle consiste a rendre les classes abstraites et les methodes en asbtract void par exemple(pas de public) ainsi meme un import tec.Passager fait dans SimpleAbstract on pourrait pas utiliser ses méthodes pour la simple raison qu'elle est pas une interface mais une class abstraite ET avec des méthodes abstraites non PUBLIQUES l'appel à une fonction génére une mécanique au niveau des packages qui fait un lien et-un entre passager et passagerstandard mais le probleme le retour genere un rejet car il faut que SimpleAbstract ait le droit complet soit des méthodes publiques et pas de classes abstraites (car non publique) ce qui rend le tout interne au paquetage;un package tec dans le test global executer pourrait nous sauver.**
+Les classes abstraites nous ont fourni un nouveau cle abstract (heritage de niveau 0) qui est essentiel pour limiter les portées et perturber la façon dont le test Simple voir le paquetage en entier.
+Complétude de formats/resultats.
+(rq2: la portée abstraite au sein d'un paquet >>> la portée publique au sein d'un paquet contrairement à un interface publique ; les héritages se font juste au niveau du paquet et avec des méthodes non publiques aucune chance d'y accéder)
+Le but reste le même: séparer la réalisation de l'exploitation des implémentations pour faire le but2 soit varier les implémentations(réalisations) sans impacter l'utilisation qui reste fixe avec de petits changements de routine ~ comme ICI.
+2ieme solution:
+Les deux classes concretes autobus et passager_standard deviennent internes au paquetage; même l'instanciation depuis SimpleInterface ne marcherait pas.
+=>SOIT: le client ne peut plus instancier ces classes. 
+(les méthodes internes peuvent rester avec une portée publique)
+mais la portée paquetage l'emporte surtout si on enleve les import tec.Passager et import tec.Vehicule. 
+Reste l'appel aux fonctions clients gérées par les deux paquets importés (Transport, Usager) pas de modification lien avec les deux interfaces (Vehicule, Passager) qu'on ne modifie pas et on ne modifie a priori les deux classes concretes dont les methodes internes restent publiques..(reste que le mot cle avant le nom de classe .. MAIS il faut que ca soit public ???) ; on suit les instructions ; l'explication se fera après.
+On passe en commentaires les deux import, ...
+CLEF: on fournit un service d'instanciation grâce à la classe publique tec.FabriqueTec.
+Premierement, avant les deux classes concretes etaient publiques ce qui faisait pensait a dire que ne pas passer en commentaire risque de faire l'anti-erreur=>les 2 classes concretes deviennent pas publiques(1er changement).
+Deuxiement, on passe les tests: make tester (make compiler) tout marche car tout a l'interieur du paquet (portée par défaut celle du paquet AUXQUEL N'APPARTIENT PAS SimpleInterface.java dans l'arborescence source²²²).
+Troisièment, les classes concretes sont devenues internes au paquet a 100% (portée paquet) MAIS RESTE UN PROBLEME: en passant en commentaire comment instancier?
+=>On touch un nouveau src/FabriqueTec dans lequel on déclare deux fonctions constructiVES statiques pour que dans simple_interface on fasse pas d'instanciation diretement import FabriqueTec depuis tec puis FabriqueTec.faireAutobus(...args)####.
+Voilà.
+Avec cela, on a rendu les 2 classes concretes internes au paquet soit inaccessibles depuis le code client=>code client n'as pas accés aux classes concretes soit au code d'instanciation mais on garde le remaniement (..transport, ..usager) telquel dans les 2²²².
+Rq: les 2 interfaces herites de niveau 1 ont pas de public des le nom'' cad. portée paquetage.
+RQ globale a retenir:
+La portée paquet est puissante et les classes abstraites la coupent si ses méthodes depuis l'exterieur ne sont pas publiques(compromis)
+LA PORTEE PAQUET CONTREBALANCE BCP de pensees d'avant fausses.
+FIN.
+FIN_TD4.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
