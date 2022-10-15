@@ -1,6 +1,9 @@
 package tec;
-public class FabriqueTec
+public final class FabriqueTec //non héritable avec le mot cle final.
 {
+	private FabriqueTec() //non instanciable cette classe même si par défaut le private bloque tout.
+	{
+	}
     public static Usager fairePassagerStandard(String nom, int dst)
     {
 	return new PassagerStandard(nom,dst);
